@@ -2,7 +2,7 @@ CFLAGS += -Wall -fPIC
 
 PREFIX=/usr/local
 INCLUDEDIR=$(PREFIX)/include
-LIBDIR=$(PREFIX)/lib
+LIBDIR=/lib/x86_64-linux-gnu/
 LIBNAME=libsshut
 
 TARGET  = ${LIBNAME}.so
