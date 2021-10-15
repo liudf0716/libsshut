@@ -26,6 +26,6 @@ jobs:
     - name: test
       run: |
         make -C examples/ 
-        ldd examples/exec
+        #ldd examples/exec
         sudo ./examples/exec
 
