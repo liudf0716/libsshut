@@ -130,7 +130,6 @@ _new(struct sshut *ssh, enum sshut_actiontype type)
 	action->error = SSHUT_NOERROR;
 	action->ev_sleep = evtimer_new(ssh->evb, _cb_state, action);
 	action->tv_sleep.tv_sec = 0;
-	//action->tv_sleep.tv_usec = 100000;
 	action->tv_sleep.tv_usec = 50000;
 	action->tv_timeout.tv_sec = 10;
 	action->tv_timeout.tv_usec = 0;
@@ -351,7 +350,7 @@ _state_again_waitsocket(struct sshut_action *action)
 
 	LOG_VERBOSE("_state_again_waitsocket %d %d (channel=%p)\n", dir, flags, action->channel);
 	action->ev_waitsocket = event_new(action->ssh->evb,
-		action->ssh->conn.sock, flags, _cb_state, action);
+		bufferevent_getfd(action->ssh->conn.b_ssh), flags, _cb_state, action);
 	event_add(action->ev_waitsocket, &action->tv_timeout);
 }
 
