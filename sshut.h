@@ -142,9 +142,9 @@ struct sshut {
 		int verbose;
 	} conf;
 	struct {
-		int sock;
 		LIBSSH2_SESSION *session;
 		struct sshut_creds *creds_cur;
+		struct bufferevent	*b_ssh;
 	} conn;
 	LIST_HEAD (, sshut_action) actions;
 	void (*cbusr_connect)(struct sshut *, void *);
