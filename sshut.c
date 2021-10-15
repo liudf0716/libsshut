@@ -84,7 +84,7 @@ sshut_connect(struct sshut *ssh)
 	sin.sin_addr.s_addr = hostaddr;
 	// XXX async connect
 	if (bufferevent_socket_connect(ssh->conn.b_ssh, (struct sockaddr*)(&sin),
-				sizeof(struct sockaddr_in)))
+				sizeof(struct sockaddr_in)) {
 		sshut_disconnect(ssh, SSHUT_ERROR_CONNECTION);
 		return -1;
 	}
@@ -156,7 +156,7 @@ static void
 _cb_state(struct bufferevent *bev, short event, void *arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
-	ssh->state = SSHUT_STATE_CONNECTING_HANDSHAKE
+	ssh->state = SSHUT_STATE_CONNECTING_HANDSHAKE;
 }
 
 static void 
