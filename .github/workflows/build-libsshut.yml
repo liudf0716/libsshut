@@ -27,5 +27,5 @@ jobs:
       run: |
         make -C examples/ 
         #ldd examples/exec
-        sudo ./examples/exec
+        ./examples/exec
 
