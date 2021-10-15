@@ -16,7 +16,6 @@
 
 #include <stdio.h>
 #include <sys/stat.h>
-#include <bsd/sys/queue.h>
 #include <libssh2.h>
 
 #define SSHUT_NOVERBOSE 0
@@ -82,7 +81,7 @@ enum sshut_credstype {
 };
 
 struct sshut_creds {
-	LIST_ENTRY(sshut_creds) entry;
+	struct sshut_creds *entry;
 	enum sshut_credstype type;
 	union {
 		struct {
@@ -93,12 +92,12 @@ struct sshut_creds {
 };
 
 struct sshut_auth {
-	LIST_HEAD(, sshut_creds) creds;
+	struct sshut_creds *creds;
 	int nextcreds;
 };
 
 struct sshut_action {
-	LIST_ENTRY(sshut_action) entry;
+	struct sshut_action *entry;
 	struct sshut *ssh;
 	enum sshut_actiontype type;
 	enum sshut_actionstate state;
