@@ -164,7 +164,7 @@ _cb_read(struct bufferevent* bev, void* arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
 	
-	switch (state) {
+	switch (ssh->state) {
 	case SSHUT_STATE_CONNECTING_HANDSHAKE:
 		_handshake(ssh);
 		break;
