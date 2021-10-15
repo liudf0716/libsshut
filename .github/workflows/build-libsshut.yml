@@ -22,4 +22,8 @@ jobs:
         
     - name: make
       run: make
+      
+    - name: test
+      run: |
+        make -C examples/ && sudo ./examples/exec
 
