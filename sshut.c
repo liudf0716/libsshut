@@ -28,9 +28,8 @@
 static void _state(struct sshut *, enum sshut_state);
 static void _handshake(struct sshut *);
 static void _authentication(struct sshut *);
-static void _state_again(struct sshut *);
-static void _state_next(struct sshut *, enum sshut_state);
-static void _cb_state(int, short, void *);
+static void _cb_state(struct bufferevent *, short , void *);
+static void _cb_read(struct bufferevent *, void*);
 
 struct sshut *
 sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
@@ -45,10 +44,6 @@ sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, e
 	ssh = calloc(1, sizeof(struct sshut));
 	ssh->evb = evb;
 	ssh->state = SSHUT_STATE_UNINITIALIZED;
-	ssh->ev_wait = evtimer_new(evb, _cb_state, ssh);
-	ssh->tv_wait.tv_sec = 0;
-	//ssh->tv_wait.tv_usec = 100000;
-	ssh->tv_wait.tv_usec = 50000;
 	ssh->conf.ip = strdup(ip);
 	ssh->conf.port = port;
 	ssh->conf.auth = auth;
@@ -65,6 +60,8 @@ sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, e
 void
 sshut_free(struct sshut *ssh)
 {
+	bufferevent_free(ssh->conn.b_ssh);
+	free(ssh->conf.ip);	
 	free(ssh);
 }
 
@@ -75,14 +72,19 @@ sshut_connect(struct sshut *ssh)
 	struct sockaddr_in sin;
 	
 	ssh->state = SSHUT_STATE_CONNECTING_SOCKET;
-	ssh->conn.sock = socket(AF_INET, SOCK_STREAM, 0);
+	
+	ssh->conn.b_ssh = bufferevent_socket_new(ssh->evb, -1, BEV_OPT_CLOSE_ON_FREE);
+	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, _cb_state, ssh);
+	bufferevent_enable(ssh->conn.b_ssh, EV_READ|EV_WRITE);
+	
+	
 	hostaddr = inet_addr(ssh->conf.ip);
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(ssh->conf.port);
 	sin.sin_addr.s_addr = hostaddr;
 	// XXX async connect
-	if (connect(ssh->conn.sock, (struct sockaddr*)(&sin),
-				sizeof(struct sockaddr_in)) != 0) {
+	if (bufferevent_socket_connect(ssh->conn.b_ssh, (struct sockaddr*)(&sin),
+				sizeof(struct sockaddr_in)))
 		sshut_disconnect(ssh, SSHUT_ERROR_CONNECTION);
 		return -1;
 	}
@@ -90,14 +92,14 @@ sshut_connect(struct sshut *ssh)
 	libssh2_session_set_blocking(ssh->conn.session, 0);
 	if (ssh->conf.verbose)
 		libssh2_trace(ssh->conn.session, LIBSSH2_TRACE_KEX|LIBSSH2_TRACE_AUTH);
-	_state_next(ssh, SSHUT_STATE_CONNECTING_HANDSHAKE);
+	
 	return 0;
 }
 
 void
 sshut_disconnect(struct sshut *ssh, enum sshut_error error)
 {
-	close(ssh->conn.sock);
+	bufferevent_free(ssh->conn.b_ssh);
 	ssh->cbusr_disconnect(ssh, error, ssh->cbusr_arg);
 }
 
@@ -111,23 +113,6 @@ static void
 _state(struct sshut *ssh, enum sshut_state state)
 {
 	ssh->state = state;
-
-	switch (state) {
-	case SSHUT_STATE_CONNECTING_HANDSHAKE:
-		_handshake(ssh);
-		break;
-	case SSHUT_STATE_CONNECTING_AUTHENTICATION:
-		_authentication(ssh);
-		break;
-	case SSHUT_STATE_CONNECTED:
-		ssh->cbusr_connect(ssh, ssh->cbusr_arg);
-		break;
-	case SSHUT_STATE_UNINITIALIZED:
-	case SSHUT_STATE_DISCONNECTED:
-	case SSHUT_STATE_CONNECTING_SOCKET:
-		sshut_disconnect(ssh, SSHUT_ERROR_UNKNOWN_STATE);
-		break;
-	}
 }
 
 static void
@@ -135,11 +120,9 @@ _handshake(struct sshut *ssh)
 {
 	int rc;
 
-	rc = libssh2_session_handshake(ssh->conn.session, ssh->conn.sock);
+	rc = libssh2_session_handshake(ssh->conn.session, bufferevent_getfd(ssh->conn.b_ssh));
 	if (!rc)
-		_state_next(ssh, SSHUT_STATE_CONNECTING_AUTHENTICATION);
-	else if (rc == LIBSSH2_ERROR_EAGAIN)
-		_state_again(ssh);
+		_state(ssh, SSHUT_STATE_CONNECTING_AUTHENTICATION);
 	else
 		sshut_disconnect(ssh, SSHUT_ERROR_HANDSHAKE);
 		
@@ -166,35 +149,35 @@ _authentication(struct sshut *ssh)
 	}
 	ssh->conn.creds_cur = creds;
 	if (!rc)
-		_state_next(ssh, SSHUT_STATE_CONNECTED);
-	else if (rc == LIBSSH2_ERROR_EAGAIN)
-		_state_again(ssh);
-	else {
-		/* next auth */
-		ssh->conn.creds_cur = NULL;
-		_state_again(ssh);
+		_state(ssh, SSHUT_STATE_CONNECTED);
+}
+
+static void
+_cb_state(struct bufferevent *bev, short event, void *arg)
+{
+	struct sshut *ssh = (struct sshut *)arg;
+	ssh->state = SSHUT_STATE_CONNECTING_HANDSHAKE
+}
+
+static void 
+_cb_read(struct bufferevent* bev, void* arg)
+{
+	struct sshut *ssh = (struct sshut *)arg;
+	
+	switch (state) {
+	case SSHUT_STATE_CONNECTING_HANDSHAKE:
+		_handshake(ssh);
+		break;
+	case SSHUT_STATE_CONNECTING_AUTHENTICATION:
+		_authentication(ssh);
+		break;
+	case SSHUT_STATE_CONNECTED:
+		ssh->cbusr_connect(ssh, ssh->cbusr_arg);
+		break;
+	case SSHUT_STATE_UNINITIALIZED:
+	case SSHUT_STATE_DISCONNECTED:
+	case SSHUT_STATE_CONNECTING_SOCKET:
+		sshut_disconnect(ssh, SSHUT_ERROR_UNKNOWN_STATE);
+		break;
 	}
 }
-
-static void
-_state_again(struct sshut *ssh)
-{
-	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
-}
-
-static void
-_state_next(struct sshut *ssh, enum sshut_state state)
-{
-	ssh->state = state;
-	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
-}
-
-static void
-_cb_state(int fd, short why, void *data)
-{
-	struct sshut *ssh;
-
-	ssh = data;
-	_state(ssh, ssh->state);
-}
-
