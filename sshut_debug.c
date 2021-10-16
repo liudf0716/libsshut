@@ -48,22 +48,14 @@ _cb_exec(struct sshut_action *action, enum sshut_error error, char *cmd, char *o
 static void
 _cb_connect(struct sshut *ssh, void *arg)
 {
-	LIBSSH2_CHANNEL *channel;
+	LIBSSH2_CHANNEL *channel = ssh->channel;
 	int rc;
-	uint32_t sock = bufferevent_getfd(ssh->conn.b_ssh);
+	int sock = bufferevent_getfd(ssh->conn.b_ssh);
 	
-	printf("Connected !\n");
-	
-	/* Exec non-blocking on the remove host */
-    	while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
-          	libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
-          	LIBSSH2_ERROR_EAGAIN) {
-        	waitsocket(sock, ssh->conn.session);
-    	}
-    	if(channel == NULL) {
-        	fprintf(stderr, "Error\n");
-        	exit(1);
-    	}
+	if (channel == NULL) {
+		printf("channel is NULL !\n");
+		return;
+	}
 	
 	printf("exec uname -a\n");
     	while((rc = libssh2_channel_exec(channel, "uname -a")) ==
@@ -125,8 +117,8 @@ main(int argc, char **argv)
 	struct sshut_auth *auth;
 	struct sshut *ssh;
 	
-	if (argc != 3) {
-		printf("sshut_debug user password\n");
+	if (argc != 4) {
+		printf("sshut_debug user password port\n");
 		return;
 	}
 	
@@ -134,7 +126,7 @@ main(int argc, char **argv)
 
 	auth = sshut_auth_new();
 	sshut_auth_add_userpass(auth, argv[1], argv[2]);
-	ssh = sshut_new(evb, "127.0.0.1", 22, auth, SSHUT_NORECONNECT, SSHUT_NOVERBOSE,
+	ssh = sshut_new(evb, "127.0.0.1", atoi(argv[3]), auth, SSHUT_NORECONNECT, SSHUT_NOVERBOSE,
 		_cb_connect, _cb_disconnect, NULL);
 	event_base_dispatch(evb);
 
