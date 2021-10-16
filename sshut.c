@@ -26,6 +26,7 @@
 
 static void _cb_state(struct bufferevent *, short , void *);
 static void _cb_read(struct bufferevent *, void*);
+static int waitsocket(int , LIBSSH2_SESSION *)
 
 struct sshut *
 sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
@@ -109,12 +110,14 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
 	struct sshut_creds *creds = NULL;
+	LIBSSH2_CHANNEL *channel;
+	int sock = bufferevent_getfd(bev);
 	int rc;
 	
 	/* ... start it up. This will trade welcome banners, exchange keys,
      	 * and setup crypto, compression, and MAC layers
      	 */
-    	while((rc = libssh2_session_handshake(ssh->conn.session, bufferevent_getfd(bev))) ==
+    	while((rc = libssh2_session_handshake(ssh->conn.session, sock)) ==
 	   LIBSSH2_ERROR_EAGAIN);
     	if(rc) {
 		fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
@@ -142,8 +145,16 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	if (ssh->conf.verbose)
 		libssh2_trace(ssh->conn.session, LIBSSH2_TRACE_KEX|LIBSSH2_TRACE_AUTH);
 	
+	/* Exec non-blocking on the remove host */
+    	while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
+          	libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
+          	LIBSSH2_ERROR_EAGAIN) {
+        	waitsocket(sock, ssh->conn.session);
+    	}
+	
 	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, NULL, ssh);
 	bufferevent_enable(ssh->conn.b_ssh, EV_READ|EV_WRITE);
+	printf("_cb_state finished\n");
 }
 
 static void 
@@ -151,4 +162,35 @@ _cb_read(struct bufferevent* bev, void* arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
 	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
+}
+
+static int 
+waitsocket(int socket_fd, LIBSSH2_SESSION *session)
+{
+    struct timeval timeout;
+    int rc;
+    fd_set fd;
+    fd_set *writefd = NULL;
+    fd_set *readfd = NULL;
+    int dir;
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 100;
+
+    FD_ZERO(&fd);
+
+    FD_SET(socket_fd, &fd);
+
+    /* now make sure we wait in the correct direction */
+    dir = libssh2_session_block_directions(session);
+
+    if(dir & LIBSSH2_SESSION_BLOCK_INBOUND)
+        readfd = &fd;
+
+    if(dir & LIBSSH2_SESSION_BLOCK_OUTBOUND)
+        writefd = &fd;
+
+    rc = select(socket_fd + 1, readfd, writefd, NULL, &timeout);
+
+    return rc;
 }
