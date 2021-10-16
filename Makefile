@@ -21,7 +21,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -fPIC -shared -o $(TARGET) $(OBJECTS)
 
 $(DTARGET): $(DOBJECTS)
-	$(CC) $(CFLAGS) -o $(DTARGET) $(DOBJECTS)
+	$(CC) $(CFLAGS) -o $(DTARGET) $(DOBJECTS) -levent -lssh2
 
 install:
 	@echo "installation of $(LIBNAME)"
