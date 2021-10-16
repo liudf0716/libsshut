@@ -111,20 +111,14 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	struct sshut_creds *creds = NULL;
 	int rc;
 	
-	
-	if(libssh2_session_handshake(ssh->conn.session, bufferevent_getfd(bev))) {
-        	fprintf(stderr, "Failure establishing SSH session\n");
-        	return;
-    	}
-	
 	/* ... start it up. This will trade welcome banners, exchange keys,
      	 * and setup crypto, compression, and MAC layers
      	 */
-    	while((rc = libssh2_session_handshake(session, sock)) ==
+    	while((rc = libssh2_session_handshake(ssh->conn.session, bufferevent_getfd(bev))) ==
 	   LIBSSH2_ERROR_EAGAIN);
     	if(rc) {
 		fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
-		return -1;
+		return;
     	}
 	
 	creds = ssh->conn.creds_cur;
@@ -138,7 +132,7 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	}
 	
 	/* We could authenticate via password */
-        while((rc = libssh2_userauth_password(session, creds->dat.userpass.user, creds->dat.userpass.pass)) ==
+        while((rc = libssh2_userauth_password(ssh->conn.session, creds->dat.userpass.user, creds->dat.userpass.pass)) ==
                LIBSSH2_ERROR_EAGAIN);
         if(rc) {
             	fprintf(stderr, "Authentication by password failed.\n");
