@@ -79,9 +79,8 @@ _cb_connect(struct sshut *ssh, void *arg)
 				fprintf(stderr, "We read:\n");
 				for(i = 0; i < rc; ++i)
 					fputc(buffer[i], stderr);
-					fprintf(stderr, "\n");
-				}
-			else {
+				fprintf(stderr, "\n");
+			} else {
 				if(rc != LIBSSH2_ERROR_EAGAIN)
 					/* no need to output this for the EAGAIN case */
 					fprintf(stderr, "libssh2_channel_read returned %d\n", rc);
@@ -119,7 +118,7 @@ main(int argc, char **argv)
 	
 	if (argc != 4) {
 		printf("sshut_debug user password port\n");
-		return;
+		return 0;
 	}
 	
 	evb = event_base_new();
