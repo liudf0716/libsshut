@@ -26,7 +26,7 @@
 
 static void _cb_state(struct bufferevent *, short , void *);
 static void _cb_read(struct bufferevent *, void*);
-static int waitsocket(int , LIBSSH2_SESSION *)
+static int waitsocket(int , LIBSSH2_SESSION *);
 
 struct sshut *
 sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
