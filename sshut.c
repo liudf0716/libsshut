@@ -157,6 +157,22 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
         	waitsocket(sock, ssh->conn.session);
     	}
 	
+	do {
+		char buffer[0x4000];
+		rc = libssh2_channel_read(channel, buffer, sizeof(buffer) );
+		if(rc > 0) {
+			int i;
+			fprintf(stderr, "We read:\n");
+			for(i = 0; i < rc; ++i)
+				fputc(buffer[i], stderr);
+			fprintf(stderr, "\n");
+		} else {
+			if(rc != LIBSSH2_ERROR_EAGAIN)
+				/* no need to output this for the EAGAIN case */
+				fprintf(stderr, "libssh2_channel_read returned %d\n", rc);
+		}
+	} while(rc > 0);
+	
 	ssh->channel = channel;
 	
 	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, NULL, ssh);
