@@ -149,6 +149,7 @@ struct sshut {
 	void (*cbusr_connect)(struct sshut *, void *);
 	void (*cbusr_disconnect)(struct sshut *, enum sshut_error, void *);
 	void *cbusr_arg;
+	LIBSSH2_CHANNEL *channel;
 };
 
 /* sshut.c */
