@@ -55,57 +55,57 @@ _cb_connect(struct sshut *ssh, void *arg)
 	printf("Connected !\n");
 	
 	/* Exec non-blocking on the remove host */
-    while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
-          libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
-          LIBSSH2_ERROR_EAGAIN) {
-        waitsocket(sock, ssh->conn.session);
-    }
-    if(channel == NULL) {
-        fprintf(stderr, "Error\n");
-        exit(1);
-    }
+    	while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
+          	libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
+          	LIBSSH2_ERROR_EAGAIN) {
+        	waitsocket(sock, ssh->conn.session);
+    	}
+    	if(channel == NULL) {
+        	fprintf(stderr, "Error\n");
+        	exit(1);
+    	}
 	
-    while((rc = libssh2_channel_exec(channel, "uname -a")) ==
+	printf("exec uname -a\n");
+    	while((rc = libssh2_channel_exec(channel, "uname -a")) ==
            LIBSSH2_ERROR_EAGAIN) {
-        waitsocket(sock, ssh->conn.session);
-    }
-    if(rc != 0) {
-        fprintf(stderr, "Error\n");
-        exit(1);
-    }
+        	waitsocket(sock, ssh->conn.session);
+    	}
+    	if(rc != 0) {
+        	fprintf(stderr, "Error\n");
+        	exit(1);
+    	}
 	
+	printf("read ssh response here\n");
 	for(;;) {
-        /* loop until we block */
-        int rc;
-        do {
-            char buffer[0x4000];
-            rc = libssh2_channel_read(channel, buffer, sizeof(buffer) );
-            if(rc > 0) {
-                int i;
-                fprintf(stderr, "We read:\n");
-                for(i = 0; i < rc; ++i)
-                    fputc(buffer[i], stderr);
-                fprintf(stderr, "\n");
-            }
-            else {
-                if(rc != LIBSSH2_ERROR_EAGAIN)
-                    /* no need to output this for the EAGAIN case */
-                    fprintf(stderr, "libssh2_channel_read returned %d\n", rc);
-            }
-        }
-        while(rc > 0);
+        	/* loop until we block */
+        	int rc;
+        	do {
+			char buffer[0x4000];
+			rc = libssh2_channel_read(channel, buffer, sizeof(buffer) );
+			if(rc > 0) {
+				int i;
+				fprintf(stderr, "We read:\n");
+				for(i = 0; i < rc; ++i)
+					fputc(buffer[i], stderr);
+					fprintf(stderr, "\n");
+				}
+			else {
+				if(rc != LIBSSH2_ERROR_EAGAIN)
+					/* no need to output this for the EAGAIN case */
+					fprintf(stderr, "libssh2_channel_read returned %d\n", rc);
+			}
+        	} while(rc > 0);
 		
 		/* this is due to blocking that would occur otherwise so we loop on
-           this condition */
-        if(rc == LIBSSH2_ERROR_EAGAIN) {
-            waitsocket(sock, ssh->conn.session);
-        }
-        else
-            break;
-    }
+           	this condition */
+        	if(rc == LIBSSH2_ERROR_EAGAIN) {
+            		waitsocket(sock, ssh->conn.session);
+        	} else
+            		break;
+    	}
 	
 	while((rc = libssh2_channel_close(channel)) == LIBSSH2_ERROR_EAGAIN)
-        waitsocket(sock, ssh->conn.session);
+        	waitsocket(sock, ssh->conn.session);
 	
 	libssh2_channel_free(channel);
 }
@@ -119,16 +119,21 @@ _cb_disconnect(struct sshut *ssh, enum sshut_error error, void *arg)
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
 	struct event_base *evb;
 	struct sshut_auth *auth;
 	struct sshut *ssh;
-
+	
+	if (argc != 3) {
+		printf("sshut_debug user password\n");
+		return;
+	}
+	
 	evb = event_base_new();
 
 	auth = sshut_auth_new();
-	sshut_auth_add_userpass(auth, "login", "password");
+	sshut_auth_add_userpass(auth, argv[1], argv[2]);
 	ssh = sshut_new(evb, "127.0.0.1", 22, auth, SSHUT_NORECONNECT, SSHUT_NOVERBOSE,
 		_cb_connect, _cb_disconnect, NULL);
 	event_base_dispatch(evb);
