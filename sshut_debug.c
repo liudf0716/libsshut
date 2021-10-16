@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <event.h>
-#include <sshut.h>
+#include "sshut.h"
 
 static void
 _cb_exec(struct sshut_action *action, enum sshut_error error, char *cmd, char *output, int output_len, void *arg)
