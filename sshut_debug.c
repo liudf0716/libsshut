@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <event.h>
 #include "sshut.h"
 
@@ -66,7 +67,7 @@ _cb_connect(struct sshut *ssh, void *arg)
 	
     while((rc = libssh2_channel_exec(channel, "uname -a")) ==
            LIBSSH2_ERROR_EAGAIN) {
-        waitsocket(sock, session);
+        waitsocket(sock, ssh->conn.session);
     }
     if(rc != 0) {
         fprintf(stderr, "Error\n");
@@ -81,7 +82,6 @@ _cb_connect(struct sshut *ssh, void *arg)
             rc = libssh2_channel_read(channel, buffer, sizeof(buffer) );
             if(rc > 0) {
                 int i;
-                bytecount += rc;
                 fprintf(stderr, "We read:\n");
                 for(i = 0; i < rc; ++i)
                     fputc(buffer[i], stderr);
