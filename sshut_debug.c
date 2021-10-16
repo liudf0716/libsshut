@@ -57,15 +57,6 @@ _cb_connect(struct sshut *ssh, void *arg)
 		return;
 	}
 	
-	printf("exec uname -a\n");
-    	while((rc = libssh2_channel_exec(channel, "uname -a")) ==
-           LIBSSH2_ERROR_EAGAIN) {
-        	waitsocket(sock, ssh->conn.session);
-    	}
-    	if(rc != 0) {
-        	fprintf(stderr, "Error\n");
-        	exit(1);
-    	}
 	
 	printf("read ssh response here\n");
 	for(;;) {
