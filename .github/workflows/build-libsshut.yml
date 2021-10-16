@@ -20,7 +20,9 @@ jobs:
         sudo apt-get install -y libssh2-1-dev
         
     - name: make
-      run: make && sudo make install
+      run: |
+        make && sudo make install
+        ./sshut_debug
       
     - name: test
       run: |
