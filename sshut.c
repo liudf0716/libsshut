@@ -151,6 +151,11 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
           	LIBSSH2_ERROR_EAGAIN) {
         	waitsocket(sock, ssh->conn.session);
     	}
+
+    	while((rc = libssh2_channel_exec(channel, "uname -a")) ==
+           LIBSSH2_ERROR_EAGAIN) {
+        	waitsocket(sock, ssh->conn.session);
+    	}
 	
 	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, NULL, ssh);
 	bufferevent_enable(ssh->conn.b_ssh, EV_READ|EV_WRITE);
