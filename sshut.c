@@ -22,12 +22,8 @@
 #include <arpa/inet.h>
 #include <event.h>
 
-
 #include "sshut.h"
 
-static void _state(struct sshut *, enum sshut_state);
-static void _handshake(struct sshut *);
-static void _authentication(struct sshut *);
 static void _cb_state(struct bufferevent *, short , void *);
 static void _cb_read(struct bufferevent *, void*);
 
@@ -74,7 +70,7 @@ sshut_connect(struct sshut *ssh)
 	ssh->state = SSHUT_STATE_CONNECTING_SOCKET;
 	
 	ssh->conn.b_ssh = bufferevent_socket_new(ssh->evb, -1, BEV_OPT_CLOSE_ON_FREE);
-	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, _cb_state, ssh);
+	bufferevent_setcb(ssh->conn.b_ssh, NULL, NULL, _cb_state, ssh);
 	bufferevent_enable(ssh->conn.b_ssh, EV_READ|EV_WRITE);
 	
 	
@@ -88,10 +84,9 @@ sshut_connect(struct sshut *ssh)
 		sshut_disconnect(ssh, SSHUT_ERROR_CONNECTION);
 		return -1;
 	}
+	
 	ssh->conn.session = libssh2_session_init();
 	libssh2_session_set_blocking(ssh->conn.session, 0);
-	if (ssh->conf.verbose)
-		libssh2_trace(ssh->conn.session, LIBSSH2_TRACE_KEX|LIBSSH2_TRACE_AUTH);
 	
 	return 0;
 }
@@ -110,74 +105,56 @@ sshut_err_print(enum sshut_error error)
 }
 
 static void
-_state(struct sshut *ssh, enum sshut_state state)
+_cb_state(struct bufferevent *bev, short event, void *arg)
 {
-	ssh->state = state;
-}
-
-static void
-_handshake(struct sshut *ssh)
-{
+	struct sshut *ssh = (struct sshut *)arg;
+	struct sshut_creds *creds = NULL;
 	int rc;
-
-	rc = libssh2_session_handshake(ssh->conn.session, bufferevent_getfd(ssh->conn.b_ssh));
-	if (!rc)
-		_state(ssh, SSHUT_STATE_CONNECTING_AUTHENTICATION);
-	else
-		sshut_disconnect(ssh, SSHUT_ERROR_HANDSHAKE);
-		
-}
-
-static void
-_authentication(struct sshut *ssh)
-{
-	struct sshut_creds *creds;
-	int rc;
-
+	
+	
+	if(libssh2_session_handshake(ssh->conn.session, bufferevent_getfd(bev))) {
+        	fprintf(stderr, "Failure establishing SSH session\n");
+        	return;
+    	}
+	
+	/* ... start it up. This will trade welcome banners, exchange keys,
+     	 * and setup crypto, compression, and MAC layers
+     	 */
+    	while((rc = libssh2_session_handshake(session, sock)) ==
+	   LIBSSH2_ERROR_EAGAIN);
+    	if(rc) {
+		fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
+		return -1;
+    	}
+	
 	creds = ssh->conn.creds_cur;
 	if (!creds) {
 		creds = sshut_auth_getcreds(ssh->conf.auth);
 		if (!creds) {
+			fprintf(stderr, "Failure get auth creds\n");
 			sshut_disconnect(ssh, SSHUT_ERROR_AUTHENTICATION);
 			return;
 		}
 	}
-	switch (creds->type) {
-	case SSHUT_CREDSTYPE_USERPASS:
-		rc = libssh2_userauth_password(ssh->conn.session, creds->dat.userpass.user, creds->dat.userpass.pass);
-		break;
-	}
-	ssh->conn.creds_cur = creds;
-	if (!rc)
-		_state(ssh, SSHUT_STATE_CONNECTED);
-}
-
-static void
-_cb_state(struct bufferevent *bev, short event, void *arg)
-{
-	struct sshut *ssh = (struct sshut *)arg;
-	ssh->state = SSHUT_STATE_CONNECTING_HANDSHAKE;
+	
+	/* We could authenticate via password */
+        while((rc = libssh2_userauth_password(session, creds->dat.userpass.user, creds->dat.userpass.pass)) ==
+               LIBSSH2_ERROR_EAGAIN);
+        if(rc) {
+            	fprintf(stderr, "Authentication by password failed.\n");
+            	return;
+        }
+	
+	if (ssh->conf.verbose)
+		libssh2_trace(ssh->conn.session, LIBSSH2_TRACE_KEX|LIBSSH2_TRACE_AUTH);
+	
+	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, NULL, ssh);
+	bufferevent_enable(ssh->conn.b_ssh, EV_READ|EV_WRITE);
 }
 
 static void 
 _cb_read(struct bufferevent* bev, void* arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
-	
-	switch (ssh->state) {
-	case SSHUT_STATE_CONNECTING_HANDSHAKE:
-		_handshake(ssh);
-		break;
-	case SSHUT_STATE_CONNECTING_AUTHENTICATION:
-		_authentication(ssh);
-		break;
-	case SSHUT_STATE_CONNECTED:
-		ssh->cbusr_connect(ssh, ssh->cbusr_arg);
-		break;
-	case SSHUT_STATE_UNINITIALIZED:
-	case SSHUT_STATE_DISCONNECTED:
-	case SSHUT_STATE_CONNECTING_SOCKET:
-		sshut_disconnect(ssh, SSHUT_ERROR_UNKNOWN_STATE);
-		break;
-	}
+	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
 }
