@@ -65,10 +65,10 @@ _ws_2_ssh(struct evbuffer* buf, struct sshut* ssh)
 
 	if(opcode == 0x01) {
 		printf("receive ws text data\n");
-		libssh2_channel_write(ssh->conn.channel, data + header_len, payload_len);
+		libssh2_channel_write(ssh->channel, data + header_len, payload_len);
 	} else if (opcode == 0x02) {
 		printf("receive ws bin data\n");
-		libssh2_channel_write(ssh->conn.channel, data + header_len, payload_len);
+		libssh2_channel_write(ssh->channel, data + header_len, payload_len);
 	}else if(!fin){
 		printf("frame to be continue...\n");
 		evbuffer_drain(buf, header_len + payload_len);
