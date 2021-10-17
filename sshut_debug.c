@@ -81,7 +81,7 @@ _ws_2_ssh(struct evbuffer* buf, struct sshut* ssh)
 }
 
 static void 
-_ws_request(bufferevent* bev){
+_ws_request(struct bufferevent* bev){
 	struct evbuffer *out = bufferevent_get_output(bev);
 	evbuffer_add_printf(out, "GET %s HTTP/1.1\r\n", uri);
 	evbuffer_add_printf(out, "Host:%s:%d\r\n",host, port);
@@ -136,7 +136,7 @@ _cb_disconnect(struct sshut *ssh, enum sshut_error error, void *arg)
 static void 
 _cb_ws_recv(struct bufferevent* bev, void* ptr)
 {
-	static bool upgraded = false;
+	static int upgraded = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	
 	if(!upgraded){
@@ -150,7 +150,7 @@ _cb_ws_recv(struct bufferevent* bev, void* ptr)
 		}else{
 			//drain 
 			evbuffer_drain(input, data_len);
-			upgraded = true;
+			upgraded = 1;
 			printf("ws upgraded success\n");
 		}
 	}else{
