@@ -8,7 +8,7 @@
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
 #define ntohll(x) htonll(x)
 
-static void _ws_request(bufferevent* );
+static void _ws_request(struct bufferevent* );
 static void _ws_2_ssh(struct evbuffer* , struct sshut* );
 static void _cb_ws_recv(struct bufferevent* , void* );
 static void _cb_ws_event(struct bufferevent*, short , void*);
@@ -91,7 +91,7 @@ _ws_request(struct bufferevent* bev, const char *ws_host, const short ws_port, c
 	evbuffer_add_printf(out, "Connection:upgrade\r\n");
 	evbuffer_add_printf(out, "Sec-WebSocket-Key:%s\r\n", fixed_key);
 	evbuffer_add_printf(out, "Sec-WebSocket-Version:13\r\n");
-	evbuffer_add_printf(out, "Origin:http://%s:%d\r\n", ws_host, port); //missing this key will lead to 403 response.
+	evbuffer_add_printf(out, "Origin:http://%s:%d\r\n", ws_host, ws_port); //missing this key will lead to 403 response.
 
 	evbuffer_add_printf(out, "\r\n");
 }
