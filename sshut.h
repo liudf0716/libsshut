@@ -181,3 +181,5 @@ void sshut_auth_free(struct sshut_auth *auth);
 int sshut_auth_add_userpass(struct sshut_auth *auth, char *user, char *pass);
 struct sshut_creds *sshut_auth_getcreds(struct sshut_auth *auth);
 void sshut_auth_rewind(struct sshut_auth *auth);
+
+int waitsocket(int , LIBSSH2_SESSION *);
