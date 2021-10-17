@@ -1,4 +1,4 @@
-CFLAGS += -Wall -fPIC
+CFLAGS += -Wall -fPIC -std=c99
 
 PREFIX=/usr/local
 INCLUDEDIR=$(PREFIX)/include
