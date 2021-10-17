@@ -26,7 +26,6 @@
 
 static void _cb_state(struct bufferevent *, short , void *);
 static void _cb_read(struct bufferevent *, void*);
-static int waitsocket(int , LIBSSH2_SESSION *);
 
 struct sshut *
 sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
@@ -158,20 +157,12 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
     	}
 	
 	ssh->channel = channel;
-	
-	bufferevent_setcb(ssh->conn.b_ssh, _cb_read, NULL, NULL, ssh);
-	bufferevent_enable(ssh->conn.b_ssh, EV_READ|EV_WRITE);
 	printf("_cb_state finished\n");
-}
-
-static void 
-_cb_read(struct bufferevent* bev, void* arg)
-{
-	struct sshut *ssh = (struct sshut *)arg;
+	
 	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
 }
 
-static int 
+int 
 waitsocket(int socket_fd, LIBSSH2_SESSION *session)
 {
     struct timeval timeout;
