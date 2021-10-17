@@ -86,7 +86,7 @@ sshut_connect(struct sshut *ssh)
 	}
 	
 	ssh->conn.session = libssh2_session_init();
-	//libssh2_session_set_blocking(ssh->conn.session, 0);
+	libssh2_session_set_blocking(ssh->conn.session, 0);
 	
 	return 0;
 }
