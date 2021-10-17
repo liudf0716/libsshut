@@ -114,14 +114,15 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	int rc;
 	
 	/* ... start it up. This will trade welcome banners, exchange keys,
-     	 * and setup crypto, compression, and MAC layers
-     	 */
-    	while((rc = libssh2_session_handshake(ssh->conn.session, sock)) ==
-	   LIBSSH2_ERROR_EAGAIN);
-    	if(rc) {
-		fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
-		return;
-    	}
+	 * and setup crypto, compression, and MAC layers
+	 */
+	while((rc = libssh2_session_handshake(ssh->conn.session, sock)) ==
+   		LIBSSH2_ERROR_EAGAIN);
+	
+	if(rc) {
+	fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
+	return;
+	}
 	
 	creds = ssh->conn.creds_cur;
 	if (!creds) {
@@ -134,27 +135,36 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	}
 	
 	/* We could authenticate via password */
-        while((rc = libssh2_userauth_password(ssh->conn.session, creds->dat.userpass.user, creds->dat.userpass.pass)) ==
-               LIBSSH2_ERROR_EAGAIN);
-        if(rc) {
-            	fprintf(stderr, "Authentication by password failed.\n");
-            	return;
-        }
+	while((rc = libssh2_userauth_password(ssh->conn.session, creds->dat.userpass.user, creds->dat.userpass.pass)) ==
+		   LIBSSH2_ERROR_EAGAIN);
+	if(rc) {
+			fprintf(stderr, "Authentication by password failed.\n");
+			return;
+	}
 	
 	if (ssh->conf.verbose)
 		libssh2_trace(ssh->conn.session, LIBSSH2_TRACE_KEX|LIBSSH2_TRACE_AUTH);
 	
 	/* Exec non-blocking on the remove host */
-    	while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
-          	libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
-          	LIBSSH2_ERROR_EAGAIN) {
-        	waitsocket(sock, ssh->conn.session);
-    	}
+	while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
+		libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
+		LIBSSH2_ERROR_EAGAIN) {
+		waitsocket(sock, ssh->conn.session);
+	}
 	
-    	while((rc = libssh2_channel_exec(channel, "uname -a")) ==
-           LIBSSH2_ERROR_EAGAIN) {
-        	waitsocket(sock, ssh->conn.session);
-    	}
+	/* Request a terminal with 'vanilla' terminal emulation
+	 * See /etc/termcap for more options
+	 */
+	if(libssh2_channel_request_pty(channel, "vanilla")) {
+		fprintf(stderr, "Failed requesting pty\n");
+		return;
+	}
+
+	/* Open a SHELL on that pty */
+	if(libssh2_channel_shell(channel)) {
+		fprintf(stderr, "Unable to request shell on allocated pty\n");
+		return;
+	}
 	
 	ssh->channel = channel;
 	printf("_cb_state finished\n");
