@@ -5,6 +5,8 @@
 
 #include "sshut.h"
 
+#define EXIT_COMMAND	"exit\n"
+
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
 #define ntohll(x) htonll(x)
 
@@ -99,8 +101,9 @@ static void
 _cb_connect(struct sshut *ssh, void *arg)
 {
 	LIBSSH2_CHANNEL *channel = ssh->channel;
+	char command[BUFSIZ];
+	char inputbuf[BUFSIZ];
 	int rc;
-	int sock = bufferevent_getfd(ssh->conn.b_ssh);
 	
 	if (channel == NULL) {
 		printf("channel is NULL !\n");
@@ -110,20 +113,24 @@ _cb_connect(struct sshut *ssh, void *arg)
 	printf("read ssh response here\n");
 	
 	do {
-		char buffer[0x4000];
-		rc = libssh2_channel_read(channel, buffer, sizeof(buffer) );
-		if(rc > 0) {
-			int i;
-			fprintf(stderr, "We read:\n");
-			for(i = 0; i < rc; ++i)
-				fputc(buffer[i], stderr);
-			fprintf(stderr, "\n");
-		} else {
-			if(rc != LIBSSH2_ERROR_EAGAIN)
-				/* no need to output this for the EAGAIN case */
-				fprintf(stderr, "libssh2_channel_read returned %d\n", rc);
+		/* Request for command input */
+		fgets(command, BUFSIZ, stdin);
+		printf("Command is %s", command);
+		if (strcmp(command, "\n") == 0) {
+			printf("Empty command\n");
+			continue;
 		}
-	} while(rc == LIBSSH2_ERROR_EAGAIN);
+
+		/* Write command to stdin of remote shell */
+		rc = libssh2_channel_write(channel, command, strlen(command));
+		printf("Channel write return value is %d\n", rc);
+
+		/* Read output from remote side */
+		rc = libssh2_channel_read(channel, inputbuf, BUFSIZ);
+		printf("Channel write return value is %d\n", rc);
+		printf("Remote side output:\n %s\n", inputbuf);
+
+	} while (strcmp(command, EXIT_COMMAND) != 0);
 }
 
 static void
