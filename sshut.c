@@ -86,7 +86,6 @@ sshut_connect(struct sshut *ssh)
 	}
 	
 	ssh->conn.session = libssh2_session_init();
-	libssh2_session_set_blocking(ssh->conn.session, 0);
 	
 	return 0;
 }
@@ -166,6 +165,7 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	}
 	
 	ssh->channel = channel;
+	libssh2_session_set_blocking(ssh->conn.session, 0);
 	printf("_cb_state finished\n");
 	
 	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
