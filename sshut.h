@@ -155,7 +155,7 @@ struct sshut {
 
 /* sshut.c */
 
-struct sshut *sshut_new(struct event_base *evb, char *ip, short port, char *ws_ip, short ws_port,
+struct sshut *sshut_new(struct event_base *evb, char *ip, short port,
 	struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
 	void (*cbusr_connect)(struct sshut *, void *),
 	void (*cbusr_disconnect)(struct sshut *, enum sshut_error, void *), void *arg);
