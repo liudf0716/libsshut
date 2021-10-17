@@ -86,7 +86,7 @@ sshut_connect(struct sshut *ssh)
 	}
 	
 	ssh->conn.session = libssh2_session_init();
-	libssh2_session_set_blocking(ssh->conn.session, 0);
+	//libssh2_session_set_blocking(ssh->conn.session, 0);
 	
 	return 0;
 }
@@ -120,8 +120,8 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
    		LIBSSH2_ERROR_EAGAIN);
 	
 	if(rc) {
-	fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
-	return;
+		fprintf(stderr, "Failure establishing SSH session: %d\n", rc);
+		return;
 	}
 	
 	creds = ssh->conn.creds_cur;
@@ -138,8 +138,8 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	while((rc = libssh2_userauth_password(ssh->conn.session, creds->dat.userpass.user, creds->dat.userpass.pass)) ==
 		   LIBSSH2_ERROR_EAGAIN);
 	if(rc) {
-			fprintf(stderr, "Authentication by password failed.\n");
-			return;
+		fprintf(stderr, "Authentication by password failed.\n");
+		return;
 	}
 	
 	if (ssh->conf.verbose)
@@ -147,8 +147,7 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	
 	/* Exec non-blocking on the remove host */
 	while((channel = libssh2_channel_open_session(ssh->conn.session)) == NULL &&
-		libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) ==
-		LIBSSH2_ERROR_EAGAIN) {
+		libssh2_session_last_error(ssh->conn.session, NULL, NULL, 0) == LIBSSH2_ERROR_EAGAIN) {
 		waitsocket(sock, ssh->conn.session);
 	}
 	
