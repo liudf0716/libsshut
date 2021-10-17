@@ -3,35 +3,6 @@
 #include <event.h>
 #include "sshut.h"
 
-static int waitsocket(int socket_fd, LIBSSH2_SESSION *session)
-{
-    struct timeval timeout;
-    int rc;
-    fd_set fd;
-    fd_set *writefd = NULL;
-    fd_set *readfd = NULL;
-    int dir;
-
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 100;
-
-    FD_ZERO(&fd);
-
-    FD_SET(socket_fd, &fd);
-
-    /* now make sure we wait in the correct direction */
-    dir = libssh2_session_block_directions(session);
-
-    if(dir & LIBSSH2_SESSION_BLOCK_INBOUND)
-        readfd = &fd;
-
-    if(dir & LIBSSH2_SESSION_BLOCK_OUTBOUND)
-        writefd = &fd;
-
-    rc = select(socket_fd + 1, readfd, writefd, NULL, &timeout);
-
-    return rc;
-}
 
 static void
 _cb_exec(struct sshut_action *action, enum sshut_error error, char *cmd, char *output, int output_len, void *arg)
