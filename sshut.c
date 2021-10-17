@@ -25,10 +25,10 @@
 #include "sshut.h"
 
 static void _cb_state(struct bufferevent *, short , void *);
-static void _cb_read(struct bufferevent *, void*);
 
 struct sshut *
-sshut_new(struct event_base *evb, char *ip, int port, struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
+sshut_new(struct event_base *evb, char *ip, short port,
+	struct sshut_auth *auth, enum sshut_reconnect reconnect, int verbose,
 	void (*cbusr_connect)(struct sshut *, void *),
 	void (*cbusr_disconnect)(struct sshut *, enum sshut_error, void *), void *arg)
 {
