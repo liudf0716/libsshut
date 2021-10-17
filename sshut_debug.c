@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <event.h>
+#include <event2/dns.h>
+
 #include "sshut.h"
 
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
@@ -55,7 +57,7 @@ _ws_2_ssh(struct evbuffer* buf, struct sshut* ssh)
 		return;
 
 	const unsigned char* mask_key = data + header_len - 4;
-	printf("data_len %d mask %x head_len %d payload_len %d opcode %x\n",
+	printf("data_len %u mask %x head_len %d payload_len %ld opcode %x\n",
 		  data_len, mask, header_len, payload_len, opcode);
 	for(int i = 0; mask && i < payload_len; i++)
 		data[header_len + i] ^= mask_key[i%4];
@@ -68,6 +70,8 @@ _ws_2_ssh(struct evbuffer* buf, struct sshut* ssh)
 		
 	}else if(!fin){
 		printf("frame to be continue...\n");
+		evbuffer_drain(buf, header_len + payload_len);
+		return;
 	}
 
 	evbuffer_drain(buf, header_len + payload_len);
@@ -130,7 +134,7 @@ _cb_disconnect(struct sshut *ssh, enum sshut_error error, void *arg)
 }
 
 static void 
-_cb_ws_recv(bufferevent* bev, void* ptr)
+_cb_ws_recv(struct bufferevent* bev, void* ptr)
 {
 	static bool upgraded = false;
 	struct evbuffer *input = bufferevent_get_input(bev);
