@@ -10,7 +10,9 @@
 
 static void _ws_request(bufferevent* );
 static void _ws_2_ssh(struct evbuffer* , struct sshut* );
-static void _cb_ws_recv(bufferevent* bev, void* ptr);
+static void _cb_ws_recv(struct bufferevent* , void* );
+static void _cb_ws_event(struct bufferevent*, short , void*);
+static void _ws_request(struct bufferevent*, const char *, const short , const char *, const char *);
 
 struct evdns_base 	*dns_base;
 struct bufferevent 	*b_ws;
@@ -81,15 +83,15 @@ _ws_2_ssh(struct evbuffer* buf, struct sshut* ssh)
 }
 
 static void 
-_ws_request(struct bufferevent* bev){
+_ws_request(struct bufferevent* bev, const char *ws_host, const short ws_port, const char *fixed_key, const char *uri){
 	struct evbuffer *out = bufferevent_get_output(bev);
 	evbuffer_add_printf(out, "GET %s HTTP/1.1\r\n", uri);
-	evbuffer_add_printf(out, "Host:%s:%d\r\n",host, port);
+	evbuffer_add_printf(out, "Host:%s:%d\r\n",ws_host, ws_port);
 	evbuffer_add_printf(out, "Upgrade:websocket\r\n");
 	evbuffer_add_printf(out, "Connection:upgrade\r\n");
 	evbuffer_add_printf(out, "Sec-WebSocket-Key:%s\r\n", fixed_key);
 	evbuffer_add_printf(out, "Sec-WebSocket-Version:13\r\n");
-	evbuffer_add_printf(out, "Origin:http://%s:%d\r\n",host, port); //missing this key will lead to 403 response.
+	evbuffer_add_printf(out, "Origin:http://%s:%d\r\n", ws_host, port); //missing this key will lead to 403 response.
 
 	evbuffer_add_printf(out, "\r\n");
 }
@@ -164,11 +166,11 @@ _cb_ws_recv(struct bufferevent* bev, void* ptr)
 }
 
 static void 
-_cb_ws_event(bufferevent* bev, short events, void* ptr)
+_cb_ws_event(struct bufferevent* bev, short events, void* ptr)
 {
 	if(events & BEV_EVENT_CONNECTED){
 		printf("ws connected\n");
-		_ws_request(bev);
+		_ws_request(bev, ws_host, ws_port, fixed_key, uri);
 	}else{
 		printf("ws disconnected\n");
 	}
