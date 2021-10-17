@@ -159,7 +159,7 @@ _cb_ws_recv(struct bufferevent* bev, void* ptr)
 		}
 		struct sshut *ssh = ptr;
 		printf("forward ws frame to ssh server\n");
-		ws_2_ssh(input, ssh);
+		_ws_2_ssh(input, ssh);
 	}
 }
 
