@@ -107,8 +107,8 @@ sshut_err_print(enum sshut_error error)
 static void
 _cb_ssh_recv(struct bufferevent *bev, void *arg)
 {
-	struct ssh *ssh = (struct sshut *)arg;
-	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
+	struct sshut *ssh = (struct sshut *)arg;
+	ssh->cbusr_connect(ssh, bev);
 }
 
 static void
