@@ -104,6 +104,13 @@ sshut_err_print(enum sshut_error error)
 }
 
 static void
+_cb_ssh_recv(struct bufferevent *bev, void *arg)
+{
+	struct ssh *ssh = (struct sshut *)arg;
+	ssh->cbusr_connect(ssh, bev);
+}
+
+static void
 _cb_state(struct bufferevent *bev, short event, void *arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
@@ -168,7 +175,9 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	libssh2_session_set_blocking(ssh->conn.session, 0);
 	printf("_cb_state finished\n");
 	
-	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
+	//ssh->cbusr_connect(ssh, ssh->cbusr_arg);
+	bufferevent_setcb(bev, _cb_ssh_recv, NULL, NULL, ssh);
+	bufferevent_enable(bev, EV_READ|EV_WRITE);
 }
 
 int 
