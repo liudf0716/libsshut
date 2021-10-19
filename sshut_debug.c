@@ -114,6 +114,7 @@ _cb_connect(struct sshut *ssh, void *arg)
 	
 	do {
 		/* Request for command input */
+		printf("$");
 		fgets(command, BUFSIZ, stdin);
 		printf("Command is %s", command);
 		if (strcmp(command, "\n") == 0) {
