@@ -108,7 +108,7 @@ static void
 _cb_ssh_recv(struct bufferevent *bev, void *arg)
 {
 	struct ssh *ssh = (struct sshut *)arg;
-	ssh->cbusr_connect(ssh, bev);
+	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
 }
 
 static void
