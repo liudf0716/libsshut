@@ -121,7 +121,7 @@ _cb_connect(struct sshut *ssh, void *arg)
 			ssh->state = SSHUT_STATE_WRITE;
 	} else if(ssh->state == SSHUT_STATE_WRITE) {
 		/* Request for command input */
-		char command[BUFSIZE] = {0};
+		char command[BUFSIZ] = {0};
 		printf("$");
 		fgets(command, BUFSIZ, stdin);
 		printf("Command is %s", command);
