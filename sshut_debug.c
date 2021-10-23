@@ -101,7 +101,6 @@ static void
 _cb_connect(struct sshut *ssh, void *arg)
 {
 	LIBSSH2_CHANNEL *channel = ssh->channel;
-	char command[BUFSIZ] = {0};
 	char inputbuf[BUFSIZ] = {0};
 	int rc;
 	
@@ -110,28 +109,33 @@ _cb_connect(struct sshut *ssh, void *arg)
 		return;
 	}
 	
-	/* Request for command input */
-	printf("$");
-	fgets(command, BUFSIZ, stdin);
-	printf("Command is %s", command);
-	if (strcmp(command, "\n") == 0) {
-		printf("Empty command\n");
-		evtimer_add(ssh->ev_wait, &ssh->tv_wait);
-		return;
+	int dir = libssh2_session_block_directions(session);
+	
+	if(dir & LIBSSH2_SESSION_BLOCK_INBOUND) {
+		/* Read output from remote side */
+		while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ)) == LIBSSH2_ERROR_EAGAIN)
+			  ;
+		printf("Channel read value is %d\n", rc);
+		if (rc > 0)
+		printf("Remote side output:\n %s\n", inputbuf);
+	} else if(dir & LIBSSH2_SESSION_BLOCK_OUTBOUND) {
+		/* Request for command input */
+		char command[BUFSIZE] = {0};
+		printf("$");
+		fgets(command, BUFSIZ, stdin);
+		printf("Command is %s", command);
+		if (strcmp(command, "\n") == 0) {
+			printf("Empty command\n");
+			evtimer_add(ssh->ev_wait, &ssh->tv_wait);
+			return;
+		}
+
+		/* Write command to stdin of remote shell */
+		while ((rc = libssh2_channel_write(channel, command, strlen(command))) == LIBSSH2_ERROR_EAGAIN)
+			   ;
+		printf("Channel write return value is %d\n", rc);
 	}
-
-	/* Write command to stdin of remote shell */
-	while ((rc = libssh2_channel_write(channel, command, strlen(command))) == LIBSSH2_ERROR_EAGAIN)
-		   ;
-	printf("Channel write return value is %d\n", rc);
-
-	/* Read output from remote side */
-	while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ)) == LIBSSH2_ERROR_EAGAIN)
-		  ;
-	printf("Channel read value is %d\n", rc);
-	if (rc > 0)
-	printf("Remote side output:\n %s\n", inputbuf);
-
+	
 	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
 	return;
 }
