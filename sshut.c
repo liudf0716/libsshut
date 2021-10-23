@@ -184,7 +184,8 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 		return;
 	}
 	
-	ssh->channel = channel;
+	ssh->channel 	= channel;
+	ssh->state		= SSHUT_STATE_READ;
 	libssh2_session_set_blocking(ssh->conn.session, 0);
 	printf("_cb_state finished\n");
 	
