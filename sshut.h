@@ -133,6 +133,8 @@ struct sshut_action {
 struct sshut {
 	struct event_base *evb;
 	enum sshut_state state;
+	struct event *ev_wait;
+	struct timeval tv_wait;
 	struct {
 		char *ip;
 		short port;
