@@ -109,16 +109,17 @@ _cb_connect(struct sshut *ssh, void *arg)
 		return;
 	}
 	
-	int dir = libssh2_session_block_directions(session);
 	
-	if(dir & LIBSSH2_SESSION_BLOCK_INBOUND) {
+	if(ssh->state == SSHUT_STATE_READ) {
 		/* Read output from remote side */
 		while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ)) == LIBSSH2_ERROR_EAGAIN)
 			  ;
 		printf("Channel read value is %d\n", rc);
 		if (rc > 0)
-		printf("Remote side output:\n %s\n", inputbuf);
-	} else if(dir & LIBSSH2_SESSION_BLOCK_OUTBOUND) {
+			printf("Remote side output:\n %s\n", inputbuf);
+		else
+			ssh->state = SSHUT_STATE_WRITE;
+	} else if(ssh->state == SSHUT_STATE_WRITE) {
 		/* Request for command input */
 		char command[BUFSIZE] = {0};
 		printf("$");
@@ -133,7 +134,10 @@ _cb_connect(struct sshut *ssh, void *arg)
 		/* Write command to stdin of remote shell */
 		while ((rc = libssh2_channel_write(channel, command, strlen(command))) == LIBSSH2_ERROR_EAGAIN)
 			   ;
-		printf("Channel write return value is %d\n", rc);
+		if (rc > 0)
+			printf("Channel write return value is %d\n", rc);
+		else 
+			ssh->state = SSHUT_STATE_READ;
 	}
 	
 	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
