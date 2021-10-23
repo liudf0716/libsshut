@@ -117,7 +117,7 @@ _cb_ssh_recv(struct bufferevent *bev, void *arg)
 }
 #endif
 
-static void _cb_timer_func(evutil_socket_t fd, short, void *)
+static void _cb_timer_func(evutil_socket_t fd, short event, void *arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
 	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
