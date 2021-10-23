@@ -101,17 +101,14 @@ static void
 _cb_connect(struct sshut *ssh, void *arg)
 {
 	LIBSSH2_CHANNEL *channel = ssh->channel;
-	char command[BUFSIZ];
-	char inputbuf[BUFSIZ];
+	char command[BUFSIZ] = {0};
+	char inputbuf[BUFSIZ] = {0};
 	int rc;
 	
 	if (channel == NULL) {
 		printf("channel is NULL !\n");
 		return;
 	}
-	
-	printf("read ssh response here\n");
-	
 	
 	/* Request for command input */
 	printf("$");
@@ -131,7 +128,8 @@ _cb_connect(struct sshut *ssh, void *arg)
 	/* Read output from remote side */
 	while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ)) == LIBSSH2_ERROR_EAGAIN)
 		  ;
-	printf("Channel write return value is %d\n", rc);
+	printf("Channel read value is %d\n", rc);
+	if (rc > 0)
 	printf("Remote side output:\n %s\n", inputbuf);
 
 	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
