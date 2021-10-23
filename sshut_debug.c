@@ -124,7 +124,7 @@ _cb_connect(struct sshut *ssh, void *arg)
 	}
 
 	/* Write command to stdin of remote shell */
-	while ((rc = libssh2_channel_write(channel, command, strlen(command)) == LIBSSH2_ERROR_EAGAIN)
+	while ((rc = libssh2_channel_write(channel, command, strlen(command))) == LIBSSH2_ERROR_EAGAIN)
 		   ;
 	printf("Channel write return value is %d\n", rc);
 
@@ -135,6 +135,7 @@ _cb_connect(struct sshut *ssh, void *arg)
 	printf("Remote side output:\n %s\n", inputbuf);
 
 	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
+	return;
 }
 
 static void
