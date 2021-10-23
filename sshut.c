@@ -26,6 +26,7 @@
 #include "sshut.h"
 
 static void _cb_state(struct bufferevent *, short , void *);
+static void _cb_timer_func(evutil_socket_t fd, short, void *);
 
 struct sshut *
 sshut_new(struct event_base *evb, char *ip, short port,
@@ -41,6 +42,9 @@ sshut_new(struct event_base *evb, char *ip, short port,
 	ssh = calloc(1, sizeof(struct sshut));
 	ssh->evb = evb;
 	ssh->state = SSHUT_STATE_UNINITIALIZED;
+	ssh->ev_wait = evtimer_new(evb, _cb_timer_func, ssh);
+	ssh->tv_wait.tv_sec = 0;
+	ssh->tv_wait.tv_usec = 50000;
 	ssh->conf.ip = strdup(ip);
 	ssh->conf.port = port;
 	ssh->conf.auth = auth;
@@ -104,11 +108,19 @@ sshut_err_print(enum sshut_error error)
 	printf("sshut error: %d\n", error);
 }
 
+#if 0
 static void
 _cb_ssh_recv(struct bufferevent *bev, void *arg)
 {
 	struct sshut *ssh = (struct sshut *)arg;
 	ssh->cbusr_connect(ssh, bev);
+}
+#endif
+
+static void _cb_timer_func(evutil_socket_t fd, short, void *)
+{
+	struct sshut *ssh = (struct sshut *)arg;
+	ssh->cbusr_connect(ssh, ssh->cbusr_arg);
 }
 
 static void
@@ -176,9 +188,10 @@ _cb_state(struct bufferevent *bev, short event, void *arg)
 	libssh2_session_set_blocking(ssh->conn.session, 0);
 	printf("_cb_state finished\n");
 	
+	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
 	//ssh->cbusr_connect(ssh, ssh->cbusr_arg);
-	bufferevent_setcb(bev, _cb_ssh_recv, NULL, NULL, ssh);
-	bufferevent_enable(bev, EV_READ|EV_WRITE);
+	//bufferevent_setcb(bev, _cb_ssh_recv, NULL, NULL, ssh);
+	//bufferevent_enable(bev, EV_READ|EV_WRITE);
 }
 
 int 
