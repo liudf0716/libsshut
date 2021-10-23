@@ -119,18 +119,21 @@ _cb_connect(struct sshut *ssh, void *arg)
 	printf("Command is %s", command);
 	if (strcmp(command, "\n") == 0) {
 		printf("Empty command\n");
-		continue;
+		goto END;
 	}
 
 	/* Write command to stdin of remote shell */
-	while ((rc = libssh2_channel_write(channel, command, strlen(command)) == LIBSSH2_ERROR_EAGAIN);
+	while ((rc = libssh2_channel_write(channel, command, strlen(command)) == LIBSSH2_ERROR_EAGAIN)
+		   ;
 	printf("Channel write return value is %d\n", rc);
 
 	/* Read output from remote side */
-	while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ) == LIBSSH2_ERROR_EAGAIN);
+	while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ) == LIBSSH2_ERROR_EAGAIN)
+		  ;
 	printf("Channel write return value is %d\n", rc);
 	printf("Remote side output:\n %s\n", inputbuf);
 
+END:
 	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
 }
 
