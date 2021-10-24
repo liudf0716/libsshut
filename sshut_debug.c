@@ -101,22 +101,53 @@ static void
 _cb_connect(struct sshut *ssh, void *arg)
 {
 	LIBSSH2_CHANNEL *channel = ssh->channel;
-	char inputbuf[BUFSIZ] = {0};
-	int rc;
-	
 	if (channel == NULL) {
 		printf("channel is NULL !\n");
 		return;
 	}
 	
+	int running = 1;
+	LIBSSH2_POLLFD *fds = malloc(sizeof (LIBSSH2_POLLFD));
+	memset(fds, 0, sizeof(LIBSSH2_POLLFD));
+	fds[0].type = LIBSSH2_POLLFD_CHANNEL;
+	fds[0].fd.channel = channel;
+	fds[0].events = LIBSSH2_POLLFD_POLLIN | LIBSSH2_POLLFD_POLLOUT;
 	
+	do {
+		char buffer[BUFSIZ] = {0};
+		int rc = (libssh2_poll(fds, 1, 10));
+		if(rc < 1)
+			continue;
+
+		if(fds[0].revents & LIBSSH2_POLLFD_POLLIN) {
+			int n = libssh2_channel_read(channel, buffer, sizeof(buffer));
+			if(n == LIBSSH2_ERROR_EAGAIN) {
+				fprintf(stderr, "will read again\n");
+			}
+			else if(n < 0) {
+				fprintf(stderr, "read failed\n");
+				running = 0;
+			}
+			else {
+				fprintf(stderr, "read input %d:\n %s", n, buffer);
+				running = 0;
+			}
+		}
+		
+		if (fds[0].revents & LIBSSH2_POLLFD_POLLOUT) {
+			fprintf(stderr, "LIBSSH2_POLLFD_POLLOUT \n");
+			running = 0;
+		}
+	} while(running);
+
+#if 0
 	if(ssh->state == SSHUT_STATE_READ) {
 		/* Read output from remote side */
 		while((rc = libssh2_channel_read(channel, inputbuf, BUFSIZ)) == LIBSSH2_ERROR_EAGAIN)
 			  ;
 		printf("Channel read value is %d\n", rc);
 		if (rc > 0)
-			printf("Remote side output:\n %s\n", inputbuf);
+			printf("Remote side output:\n %s", inputbuf);
 		else
 			ssh->state = SSHUT_STATE_WRITE;
 	} else if(ssh->state == SSHUT_STATE_WRITE) {
@@ -139,6 +170,7 @@ _cb_connect(struct sshut *ssh, void *arg)
 		else 
 			ssh->state = SSHUT_STATE_READ;
 	}
+#endif
 	
 	evtimer_add(ssh->ev_wait, &ssh->tv_wait);
 	return;
